@@ -2,7 +2,8 @@ import React from "react";
 import { NavigationContainer } from "@react-navigation/native";
 import { createStackNavigator } from "@react-navigation/stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
-import { Ionicons } from "@expo/vector-icons"; // Assuming you're using Expo
+import { Ionicons } from "@expo/vector-icons";
+import { useAuth } from "../context/AuthContext";
 
 // Import your screens
 import LoginScreen from "../screens/LoginScreen";
@@ -12,11 +13,9 @@ import PaymentScreen from "../screens/PaymentScreen";
 import HistoryScreen from "../screens/HistoryScreen";
 import ProfileScreen from "../screens/ProfileScreen";
 
-// Create navigators
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
 
-// Tab navigator for main app screens
 function MainTabs() {
   return (
     <Tab.Navigator
@@ -43,33 +42,42 @@ function MainTabs() {
   );
 }
 
-// Main app navigator
-function AppNavigator() {
+export default function AppNavigator() {
+  const { currentUser, loading } = useAuth();
+
+  if (loading) {
+    return null; // Or a loading screen
+  }
+
   return (
     <NavigationContainer>
-      <Stack.Navigator initialRouteName="Login">
-        {/* Auth screens */}
-        <Stack.Screen
-          name="Login"
-          component={LoginScreen}
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen
-          name="Register"
-          component={RegisterScreen}
-          options={{ headerShown: false }}
-        />
-
-        {/* Main app screens */}
-        <Stack.Screen
-          name="Main"
-          component={MainTabs}
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen name="Payment" component={PaymentScreen} />
+      <Stack.Navigator>
+        {!currentUser ? (
+          // Auth screens
+          <>
+            <Stack.Screen
+              name="Login"
+              component={LoginScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="Register"
+              component={RegisterScreen}
+              options={{ headerShown: false }}
+            />
+          </>
+        ) : (
+          // App screens
+          <>
+            <Stack.Screen
+              name="Main"
+              component={MainTabs}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen name="Payment" component={PaymentScreen} />
+          </>
+        )}
       </Stack.Navigator>
     </NavigationContainer>
   );
 }
-
-export default AppNavigator;

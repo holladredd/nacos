@@ -2,6 +2,12 @@
   "expo": {
     "name": "nacos",
     "slug": "nacos",
-    "version": "1.0.0"
+    "version": "1.0.0",
+    "scheme": "your-app-scheme",
+    "web": {
+      "config": {
+        "firebase": {}
+      }
+    }
   }
 }

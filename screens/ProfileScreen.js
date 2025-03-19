@@ -1,15 +1,20 @@
 import React from "react";
-import { View, Text, StyleSheet, TouchableOpacity, Alert } from "react-native";
-import { getAuth, signOut } from "firebase/auth";
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Alert,
+  Image,
+} from "react-native";
 import { useAuth } from "../context/AuthContext";
 
 export default function ProfileScreen({ navigation }) {
-  const { currentUser } = useAuth();
-  const auth = getAuth();
+  const { currentUser, userInfo, logout } = useAuth();
 
   const handleLogout = async () => {
     try {
-      await signOut(auth);
+      await logout();
       navigation.reset({
         index: 0,
         routes: [{ name: "Login" }],
@@ -22,11 +27,19 @@ export default function ProfileScreen({ navigation }) {
   return (
     <View style={styles.container}>
       <View style={styles.profileHeader}>
-        <View style={styles.avatar}>
-          <Text style={styles.avatarText}>
-            {currentUser?.email?.charAt(0).toUpperCase() || "U"}
-          </Text>
-        </View>
+        {currentUser?.photoURL ? (
+          <Image source={{ uri: currentUser.photoURL }} style={styles.avatar} />
+        ) : (
+          <View style={styles.avatarPlaceholder}>
+            <Text style={styles.avatarText}>
+              {userInfo?.fullName?.charAt(0).toUpperCase() ||
+                currentUser?.email?.charAt(0).toUpperCase() ||
+                "U"}
+            </Text>
+          </View>
+        )}
+
+        <Text style={styles.name}>{userInfo?.fullName || "User"}</Text>
         <Text style={styles.email}>{currentUser?.email}</Text>
       </View>
 
@@ -63,6 +76,12 @@ const styles = StyleSheet.create({
     width: 100,
     height: 100,
     borderRadius: 50,
+    marginBottom: 10,
+  },
+  avatarPlaceholder: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
     backgroundColor: "#2196F3",
     justifyContent: "center",
     alignItems: "center",
@@ -73,8 +92,14 @@ const styles = StyleSheet.create({
     color: "white",
     fontWeight: "bold",
   },
+  name: {
+    fontSize: 22,
+    fontWeight: "bold",
+    marginBottom: 5,
+  },
   email: {
-    fontSize: 18,
+    fontSize: 16,
+    color: "#666",
   },
   section: {
     marginBottom: 20,
