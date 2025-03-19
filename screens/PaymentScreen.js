@@ -3,13 +3,14 @@ import {
   View,
   Text,
   TextInput,
-  Button,
+  TouchableOpacity,
   ActivityIndicator,
   Alert,
   StyleSheet,
 } from "react-native";
 import { db } from "../firebaseConfig";
 import { collection, addDoc } from "firebase/firestore";
+import { useAuth } from "../context/AuthContext";
 
 export default function PaymentScreen({ route, navigation }) {
   const { payment } = route.params;
@@ -17,6 +18,7 @@ export default function PaymentScreen({ route, navigation }) {
   const [cardNumber, setCardNumber] = useState("");
   const [cvv, setCvv] = useState("");
   const [expiry, setExpiry] = useState("");
+  const { currentUser } = useAuth();
 
   const handlePayment = async () => {
     if (!cardNumber || !cvv || !expiry) {
@@ -27,24 +29,31 @@ export default function PaymentScreen({ route, navigation }) {
     setLoading(true);
 
     setTimeout(async () => {
-      setLoading(false);
-      await addDoc(collection(db, "payments"), {
-        title: payment.title,
-        amount: payment.amount,
-        status: "Completed",
-        paymentMethod: "Dummy Payment",
-        timestamp: new Date(),
-      });
+      try {
+        await addDoc(collection(db, "payments"), {
+          userId: currentUser.uid,
+          title: payment.title,
+          amount: payment.amount,
+          status: "Completed",
+          paymentMethod: "Dummy Payment",
+          timestamp: new Date(),
+        });
 
-      Alert.alert("Success", "Payment simulated successfully!");
-      navigation.navigate("History");
+        setLoading(false);
+        Alert.alert("Success", "Payment simulated successfully!", [
+          { text: "OK", onPress: () => navigation.navigate("History") },
+        ]);
+      } catch (error) {
+        setLoading(false);
+        Alert.alert("Error", "Failed to process payment: " + error.message);
+      }
     }, 3000);
   };
 
   return (
     <View style={styles.container}>
       <Text style={styles.header}>Make Payment</Text>
-      <Text>
+      <Text style={styles.paymentDetails}>
         {payment.title} - ₦{payment.amount}
       </Text>
 
@@ -61,6 +70,7 @@ export default function PaymentScreen({ route, navigation }) {
         onChangeText={setCvv}
         keyboardType="numeric"
         style={styles.input}
+        maxLength={3}
       />
       <TextInput
         placeholder="Expiry Date (MM/YY)"
@@ -68,13 +78,20 @@ export default function PaymentScreen({ route, navigation }) {
         onChangeText={setExpiry}
         keyboardType="numeric"
         style={styles.input}
+        maxLength={5}
       />
 
-      {loading ? (
-        <ActivityIndicator size="large" color="blue" />
-      ) : (
-        <Button title="Simulate Payment" onPress={handlePayment} />
-      )}
+      <TouchableOpacity
+        style={styles.button}
+        onPress={handlePayment}
+        disabled={loading}
+      >
+        {loading ? (
+          <ActivityIndicator size="small" color="#fff" />
+        ) : (
+          <Text style={styles.buttonText}>Simulate Payment</Text>
+        )}
+      </TouchableOpacity>
     </View>
   );
 }
@@ -82,10 +99,35 @@ export default function PaymentScreen({ route, navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
     padding: 20,
   },
-  header: { fontSize: 20, fontWeight: "bold", marginBottom: 20 },
-  input: { width: "100%", borderBottomWidth: 1, marginBottom: 10, padding: 8 },
+  header: {
+    fontSize: 24,
+    fontWeight: "bold",
+    marginBottom: 20,
+  },
+  paymentDetails: {
+    fontSize: 18,
+    marginBottom: 30,
+  },
+  input: {
+    width: "100%",
+    borderWidth: 1,
+    borderColor: "#ddd",
+    borderRadius: 5,
+    marginBottom: 15,
+    padding: 15,
+  },
+  button: {
+    backgroundColor: "#2196F3",
+    padding: 15,
+    borderRadius: 5,
+    alignItems: "center",
+    marginTop: 10,
+  },
+  buttonText: {
+    color: "white",
+    fontWeight: "bold",
+    fontSize: 16,
+  },
 });
