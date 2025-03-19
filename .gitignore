@@ -36,3 +36,4 @@ yarn-error.*
 *.tsbuildinfo
 
 apphosting.local.yaml
+firebase-debug.log
