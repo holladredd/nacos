@@ -72,6 +72,16 @@ export default function PaymentScreen({ route, navigation }) {
     }
 
     setLoading(true);
+    const paymentData = {
+      id: Date.now().toString(), // Temporary ID until we get the actual doc ID
+      userId: currentUser.uid,
+      title: payment.title,
+      amount: payment.amount,
+      status: "Completed",
+      paymentMethod: "Card Payment",
+      cardLast4: cardNumber.slice(-4),
+      timestamp: new Date(),
+    };
 
     setTimeout(async () => {
       try {
@@ -88,6 +98,11 @@ export default function PaymentScreen({ route, navigation }) {
 
         setLoading(false);
         Alert.alert("Success", "Payment processed successfully!", [
+          {
+            text: "View Receipt",
+            onPress: () =>
+              navigation.navigate("PaymentDetails", { payment: paymentData }),
+          },
           {
             text: "OK",
             onPress: () => navigation.navigate("Main", { screen: "History" }),

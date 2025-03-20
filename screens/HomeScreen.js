@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import {
   View,
   Text,
@@ -9,9 +9,20 @@ import {
 } from "react-native";
 import { useAuth } from "../context/AuthContext";
 import { Ionicons } from "@expo/vector-icons";
+import { useUser } from "../context/UserContext";
 
 export default function HomeScreen({ navigation }) {
-  const { userInfo } = useAuth();
+  const { currentUser } = useAuth();
+  const { userData, loading, fetchUserData } = useUser();
+  // Fetch user data when the screen comes into focus
+  useEffect(() => {
+    const unsubscribe = navigation.addListener("focus", () => {
+      fetchUserData();
+    });
+    return unsubscribe;
+  }, [navigation, fetchUserData]);
+  console.log("User Info:", currentUser);
+  console.log("User data:", userData);
 
   const paymentOptions = [
     { id: "1", title: "Annual Dues", amount: 5000, icon: "calendar" },
@@ -30,11 +41,15 @@ export default function HomeScreen({ navigation }) {
         <View>
           <Text style={styles.greeting}>Hello,</Text>
           <Text style={styles.name}>
-            {userInfo?.fullName || "NACOS Member"}
+            {userData?.fullName || "NACOS Member"}
           </Text>
         </View>
         <View style={styles.logoContainer}>
-          <Text style={styles.logoText}>NACOS</Text>
+          <Text style={styles.logoText}>
+            {userData?.username?.charAt(0).toUpperCase() ||
+              currentUser?.email?.charAt(0).toUpperCase() ||
+              "U"}
+          </Text>
         </View>
       </View>
 
@@ -125,6 +140,7 @@ const styles = StyleSheet.create({
   logoText: {
     color: "#fff",
     fontWeight: "bold",
+    fontSize: 30,
   },
   announcementCard: {
     flexDirection: "row",

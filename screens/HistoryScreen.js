@@ -59,7 +59,7 @@ export default function HistoryScreen() {
               ? data.timestamp.toDate()
               : new Date()
             : new Date(),
-          // Include any additional data needed for the details screen
+          // Include any additional fields that might be useful in details
           reference: data.reference || "",
           email: data.email || "",
           description: data.description || "",
@@ -88,6 +88,7 @@ export default function HistoryScreen() {
     });
   };
 
+  // Add this function to handle navigation to payment details
   const handlePaymentPress = (payment) => {
     navigation.navigate("PaymentDetails", { payment });
   };
@@ -124,6 +125,7 @@ export default function HistoryScreen() {
         </Text>
       </View>
 
+      {/* Add a visual indicator that this is clickable */}
       <View style={styles.viewDetailsContainer}>
         <Text style={styles.viewDetailsText}>View Details</Text>
         <Ionicons name="chevron-forward" size={16} color="#2196F3" />
@@ -273,6 +275,7 @@ const styles = StyleSheet.create({
     color: "#666",
     textAlign: "center",
   },
+  // Add styles for the view details indicator
   viewDetailsContainer: {
     flexDirection: "row",
     alignItems: "center",

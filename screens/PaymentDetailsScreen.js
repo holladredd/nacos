@@ -13,9 +13,17 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
 import * as FileSystem from "expo-file-system";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function PaymentDetailsScreen({ route, navigation }) {
-  const { payment } = route.params;
+  const payment = route?.params?.payment || {
+    id: "unknown",
+    title: "Unknown Payment",
+    amount: 0,
+    status: "Unknown",
+    paymentMethod: "Unknown",
+    timestamp: new Date(),
+  };
 
   const formatDate = (date) => {
     return date.toLocaleDateString("en-US", {
@@ -201,7 +209,7 @@ export default function PaymentDetailsScreen({ route, navigation }) {
   };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity
           style={styles.backButton}
@@ -282,7 +290,7 @@ export default function PaymentDetailsScreen({ route, navigation }) {
           <Text style={styles.printButtonText}>Print Receipt</Text>
         </TouchableOpacity>
       </View>
-    </View>
+    </SafeAreaView>
   );
 }
 
