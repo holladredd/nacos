@@ -88,7 +88,10 @@ export default function PaymentScreen({ route, navigation }) {
 
         setLoading(false);
         Alert.alert("Success", "Payment processed successfully!", [
-          { text: "OK", onPress: () => navigation.navigate("History") },
+          {
+            text: "OK",
+            onPress: () => navigation.navigate("Main", { screen: "History" }),
+          },
         ]);
       } catch (error) {
         setLoading(false);

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -11,10 +11,27 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from "react-native";
-import { getAuth, createUserWithEmailAndPassword } from "firebase/auth";
+import {
+  getAuth,
+  createUserWithEmailAndPassword,
+  GoogleAuthProvider,
+  signInWithCredential,
+} from "firebase/auth";
 import { db } from "../firebaseConfig";
-import { collection, addDoc, setDoc, doc } from "firebase/firestore";
+import {
+  collection,
+  addDoc,
+  setDoc,
+  doc,
+  getDoc,
+  serverTimestamp,
+} from "firebase/firestore";
 import { Ionicons } from "@expo/vector-icons";
+import * as Google from "expo-auth-session/providers/google";
+import * as WebBrowser from "expo-web-browser";
+
+// Required for Google Sign-In with Expo
+WebBrowser.maybeCompleteAuthSession();
 
 export default function RegisterScreen({ navigation }) {
   const [fullName, setFullName] = useState("");
@@ -32,6 +49,62 @@ export default function RegisterScreen({ navigation }) {
   });
 
   const auth = getAuth();
+
+  // Set up Google Sign-In
+  const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
+    clientId:
+      "1065295977532-ii2kqqe52rp28pfcpluraqhkdan30131.apps.googleusercontent.com",
+    // You might need these depending on your setup
+    // iosClientId: 'YOUR_IOS_CLIENT_ID',
+    // androidClientId: 'YOUR_ANDROID_CLIENT_ID',
+  });
+
+  // Handle Google Sign-In response
+  useEffect(() => {
+    if (response?.type === "success") {
+      const { id_token } = response.params;
+      const credential = GoogleAuthProvider.credential(id_token);
+      handleGoogleSignIn(credential);
+    }
+  }, [response]);
+
+  const handleGoogleSignIn = async (credential) => {
+    setLoading(true);
+    try {
+      const userCredential = await signInWithCredential(auth, credential);
+      const user = userCredential.user;
+
+      // Check if user exists in Firestore
+      const userDoc = await getDoc(doc(db, "users", user.uid));
+
+      if (!userDoc.exists()) {
+        // Create new user document if first time sign-in
+        await setDoc(doc(db, "users", user.uid), {
+          uid: user.uid,
+          fullName: user.displayName || "",
+          email: user.email,
+          photoURL: user.photoURL || "",
+          createdAt: serverTimestamp(),
+          lastLogin: serverTimestamp(),
+        });
+      } else {
+        // Update last login time
+        await setDoc(
+          doc(db, "users", user.uid),
+          {
+            lastLogin: serverTimestamp(),
+          },
+          { merge: true }
+        );
+      }
+
+      setLoading(false);
+      navigation.replace("Main");
+    } catch (error) {
+      setLoading(false);
+      Alert.alert("Error", error.message);
+    }
+  };
 
   // Validate email format
   const isValidEmail = (email) => {
@@ -111,8 +184,8 @@ export default function RegisterScreen({ navigation }) {
         uid: userCredential.user.uid,
         fullName,
         email,
-        createdAt: new Date(),
-        lastLogin: new Date(),
+        createdAt: serverTimestamp(),
+        lastLogin: serverTimestamp(),
       });
 
       setLoading(false);
@@ -255,6 +328,26 @@ export default function RegisterScreen({ navigation }) {
             )}
           </TouchableOpacity>
 
+          <View style={styles.dividerContainer}>
+            <View style={styles.divider} />
+            <Text style={styles.dividerText}>OR</Text>
+            <View style={styles.divider} />
+          </View>
+
+          <TouchableOpacity
+            style={styles.googleButton}
+            onPress={() => promptAsync()}
+            disabled={loading}
+          >
+            <Ionicons
+              name="logo-google"
+              size={20}
+              color="#fff"
+              style={styles.googleIcon}
+            />
+            <Text style={styles.buttonText}>Sign up with Google</Text>
+          </TouchableOpacity>
+
           <TouchableOpacity
             onPress={() => navigation.navigate("Login")}
             style={styles.linkContainer}
@@ -332,6 +425,31 @@ const styles = StyleSheet.create({
     color: "white",
     fontWeight: "bold",
     fontSize: 16,
+  },
+  dividerContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginVertical: 20,
+  },
+  divider: {
+    flex: 1,
+    height: 1,
+    backgroundColor: "#ddd",
+  },
+  dividerText: {
+    marginHorizontal: 10,
+    color: "#666",
+  },
+  googleButton: {
+    backgroundColor: "#DB4437",
+    padding: 15,
+    borderRadius: 5,
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "center",
+  },
+  googleIcon: {
+    marginRight: 10,
   },
   linkContainer: {
     marginTop: 20,

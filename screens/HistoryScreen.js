@@ -1,96 +1,171 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
+  FlatList,
   StyleSheet,
+  ActivityIndicator,
   TouchableOpacity,
-  ScrollView,
-  Image,
 } from "react-native";
+import { db } from "../firebaseConfig";
+import { collection, query, where, orderBy, getDocs } from "firebase/firestore";
 import { useAuth } from "../context/AuthContext";
 import { Ionicons } from "@expo/vector-icons";
+import { useNavigation } from "@react-navigation/native";
 
-export default function HomeScreen({ navigation }) {
-  const { userInfo } = useAuth();
+export default function HistoryScreen() {
+  const [payments, setPayments] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const { currentUser } = useAuth();
+  const navigation = useNavigation();
 
-  const paymentOptions = [
-    { id: "1", title: "Annual Dues", amount: 5000, icon: "calendar" },
-    { id: "2", title: "Conference Fee", amount: 10000, icon: "people" },
-    { id: "3", title: "Workshop Registration", amount: 3000, icon: "book" },
-    { id: "4", title: "Membership Card", amount: 1500, icon: "card" },
-  ];
+  useEffect(() => {
+    fetchPayments();
+  }, []);
 
-  const handlePayment = (payment) => {
-    navigation.navigate("Payment", { payment });
+  const fetchPayments = async () => {
+    setLoading(true);
+    try {
+      // Check if user is authenticated
+      if (!currentUser || !currentUser.uid) {
+        console.error("User not authenticated");
+        setPayments([]);
+        setLoading(false);
+        return;
+      }
+
+      const q = query(
+        collection(db, "payments"),
+        where("userId", "==", currentUser.uid),
+        orderBy("timestamp", "desc")
+      );
+
+      const querySnapshot = await getDocs(q);
+      const paymentsList = [];
+
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        // Safely handle missing fields with default values
+        paymentsList.push({
+          id: doc.id,
+          title: data.title || "Unknown Payment",
+          amount: data.amount || 0,
+          status: data.status || "Unknown",
+          paymentMethod: data.paymentMethod || "Unknown Method",
+          cardLast4: data.cardLast4 || "",
+          // Safely convert timestamp or use current date as fallback
+          timestamp: data.timestamp
+            ? typeof data.timestamp.toDate === "function"
+              ? data.timestamp.toDate()
+              : new Date()
+            : new Date(),
+          // Include any additional data needed for the details screen
+          reference: data.reference || "",
+          email: data.email || "",
+          description: data.description || "",
+        });
+      });
+
+      setPayments(paymentsList);
+    } catch (error) {
+      console.error("Error fetching payments:", error);
+      // Show a more specific error message based on the error
+      if (error.code === "permission-denied") {
+        console.error("Permission denied. Check Firestore rules.");
+      } else if (error.code === "not-found") {
+        console.error("Payments collection not found.");
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
+  const formatDate = (date) => {
+    return date.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+  };
+
+  const handlePaymentPress = (payment) => {
+    navigation.navigate("PaymentDetails", { payment });
+  };
+
+  const renderItem = ({ item }) => (
+    <TouchableOpacity
+      style={styles.paymentCard}
+      onPress={() => handlePaymentPress(item)}
+      activeOpacity={0.7}
+    >
+      <View style={styles.paymentHeader}>
+        <Text style={styles.paymentTitle}>{item.title}</Text>
+        <Text
+          style={[
+            styles.paymentStatus,
+            item.status === "Completed"
+              ? styles.statusCompleted
+              : styles.statusPending,
+          ]}
+        >
+          {item.status}
+        </Text>
+      </View>
+
+      <View style={styles.paymentDetails}>
+        <Text style={styles.paymentAmount}>₦{item.amount}</Text>
+        <Text style={styles.paymentDate}>{formatDate(item.timestamp)}</Text>
+      </View>
+
+      <View style={styles.paymentMethod}>
+        <Ionicons name="card-outline" size={16} color="#666" />
+        <Text style={styles.paymentMethodText}>
+          {item.paymentMethod} {item.cardLast4 ? `•••• ${item.cardLast4}` : ""}
+        </Text>
+      </View>
+
+      <View style={styles.viewDetailsContainer}>
+        <Text style={styles.viewDetailsText}>View Details</Text>
+        <Ionicons name="chevron-forward" size={16} color="#2196F3" />
+      </View>
+    </TouchableOpacity>
+  );
+
+  const renderEmptyList = () => (
+    <View style={styles.emptyContainer}>
+      <Ionicons name="receipt-outline" size={60} color="#ccc" />
+      <Text style={styles.emptyText}>No payment history yet</Text>
+      <Text style={styles.emptySubtext}>
+        Your payment history will appear here
+      </Text>
+    </View>
+  );
+
   return (
-    <ScrollView style={styles.container}>
+    <View style={styles.container}>
       <View style={styles.header}>
-        <View>
-          <Text style={styles.greeting}>Hello,</Text>
-          <Text style={styles.name}>
-            {userInfo?.fullName || "NACOS Member"}
-          </Text>
+        <Text style={styles.headerTitle}>Payment History</Text>
+        <TouchableOpacity onPress={fetchPayments}>
+          <Ionicons name="refresh" size={24} color="#2196F3" />
+        </TouchableOpacity>
+      </View>
+
+      {loading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#2196F3" />
         </View>
-        <View style={styles.logoContainer}>
-          <Text style={styles.logoText}>NACOS</Text>
-        </View>
-      </View>
-
-      <View style={styles.announcementCard}>
-        <View style={styles.announcementContent}>
-          <Text style={styles.announcementTitle}>Welcome to NACOS App</Text>
-          <Text style={styles.announcementText}>
-            Make payments, track your history, and stay updated with NACOS
-            activities.
-          </Text>
-        </View>
-        <Ionicons name="megaphone" size={40} color="#2196F3" />
-      </View>
-
-      <Text style={styles.sectionTitle}>Payment Options</Text>
-
-      <View style={styles.paymentGrid}>
-        {paymentOptions.map((option) => (
-          <TouchableOpacity
-            key={option.id}
-            style={styles.paymentOption}
-            onPress={() => handlePayment(option)}
-          >
-            <View style={styles.iconContainer}>
-              <Ionicons name={option.icon} size={28} color="#2196F3" />
-            </View>
-            <Text style={styles.optionTitle}>{option.title}</Text>
-            <Text style={styles.optionAmount}>₦{option.amount}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-
-      <Text style={styles.sectionTitle}>Quick Links</Text>
-
-      <View style={styles.quickLinks}>
-        <TouchableOpacity style={styles.quickLink}>
-          <Ionicons name="document-text" size={24} color="#2196F3" />
-          <Text style={styles.quickLinkText}>Resources</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.quickLink}>
-          <Ionicons name="calendar" size={24} color="#2196F3" />
-          <Text style={styles.quickLinkText}>Events</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.quickLink}>
-          <Ionicons name="chatbubbles" size={24} color="#2196F3" />
-          <Text style={styles.quickLinkText}>Community</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.quickLink}>
-          <Ionicons name="help-circle" size={24} color="#2196F3" />
-          <Text style={styles.quickLinkText}>Support</Text>
-        </TouchableOpacity>
-      </View>
-    </ScrollView>
+      ) : (
+        <FlatList
+          data={payments}
+          renderItem={renderItem}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={
+            payments.length === 0 ? styles.emptyList : styles.list
+          }
+          ListEmptyComponent={renderEmptyList}
+        />
+      )}
+    </View>
   );
 }
 
@@ -105,121 +180,111 @@ const styles = StyleSheet.create({
     alignItems: "center",
     padding: 20,
     backgroundColor: "#fff",
+    borderBottomWidth: 1,
+    borderBottomColor: "#eee",
   },
-  greeting: {
-    fontSize: 16,
-    color: "#666",
-  },
-  name: {
+  headerTitle: {
     fontSize: 20,
     fontWeight: "bold",
   },
-  logoContainer: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: "#2196F3",
+  loadingContainer: {
+    flex: 1,
     justifyContent: "center",
     alignItems: "center",
   },
-  logoText: {
-    color: "#fff",
-    fontWeight: "bold",
-  },
-  announcementCard: {
-    flexDirection: "row",
-    backgroundColor: "#e3f2fd",
-    borderRadius: 10,
+  list: {
     padding: 15,
-    margin: 15,
+  },
+  emptyList: {
+    flexGrow: 1,
+    justifyContent: "center",
     alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
+    padding: 20,
   },
-  announcementContent: {
-    flex: 1,
-    marginRight: 10,
-  },
-  announcementTitle: {
-    fontSize: 16,
-    fontWeight: "bold",
-    marginBottom: 5,
-  },
-  announcementText: {
-    fontSize: 14,
-    color: "#444",
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    marginHorizontal: 15,
-    marginTop: 20,
-    marginBottom: 15,
-  },
-  paymentGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    paddingHorizontal: 10,
-  },
-  paymentOption: {
-    width: "46%",
+  paymentCard: {
     backgroundColor: "#fff",
     borderRadius: 10,
     padding: 15,
-    margin: "2%",
-    alignItems: "center",
+    marginBottom: 15,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
     shadowRadius: 2,
     elevation: 2,
   },
-  iconContainer: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: "#f0f7ff",
-    justifyContent: "center",
+  paymentHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
     alignItems: "center",
     marginBottom: 10,
   },
-  optionTitle: {
-    fontSize: 14,
-    fontWeight: "600",
-    textAlign: "center",
-    marginBottom: 5,
-  },
-  optionAmount: {
+  paymentTitle: {
     fontSize: 16,
-    fontWeight: "bold",
-    color: "#2196F3",
+    fontWeight: "600",
   },
-  quickLinks: {
+  paymentStatus: {
+    fontSize: 12,
+    fontWeight: "500",
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 12,
+  },
+  statusCompleted: {
+    backgroundColor: "#e6f7ed",
+    color: "#00a650",
+  },
+  statusPending: {
+    backgroundColor: "#fff8e6",
+    color: "#f5a623",
+  },
+  paymentDetails: {
     flexDirection: "row",
-    flexWrap: "wrap",
-    paddingHorizontal: 10,
-    paddingBottom: 20,
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 10,
   },
-  quickLink: {
-    width: "46%",
-    backgroundColor: "#fff",
-    borderRadius: 10,
-    padding: 15,
-    margin: "2%",
+  paymentAmount: {
+    fontSize: 18,
+    fontWeight: "bold",
+  },
+  paymentDate: {
+    color: "#666",
+    fontSize: 14,
+  },
+  paymentMethod: {
     flexDirection: "row",
     alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
   },
-  quickLinkText: {
-    marginLeft: 10,
+  paymentMethodText: {
+    marginLeft: 5,
+    color: "#666",
     fontSize: 14,
-    fontWeight: "500",
+  },
+  emptyContainer: {
+    alignItems: "center",
+  },
+  emptyText: {
+    fontSize: 18,
+    fontWeight: "600",
+    marginTop: 15,
+    marginBottom: 5,
+  },
+  emptySubtext: {
+    color: "#666",
+    textAlign: "center",
+  },
+  viewDetailsContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "flex-end",
+    marginTop: 10,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: "#f0f0f0",
+  },
+  viewDetailsText: {
+    color: "#2196F3",
+    fontSize: 14,
+    marginRight: 5,
   },
 });

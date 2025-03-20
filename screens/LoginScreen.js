@@ -35,8 +35,13 @@ export default function LoginScreen({ navigation }) {
 
   // Set up Google Sign-In
   const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
-    clientId: "YOUR_WEB_CLIENT_ID", // Get this from Firebase console
-    // You might need these depending on your setup
+    webClientId:
+      "1065295977532-ii2kqqe52rp28pfcpluraqhkdan30131.apps.googleusercontent.com",
+    // expoClientId:
+    //   "1065295977532-ii2kqqe52rp28pfcpluraqhkdan30131.apps.googleusercontent.com",
+    androidClientId:
+      "1065295977532-ii2kqqe52rp28pfcpluraqhkdan30131.apps.googleusercontent.com",
+    scopes: ["profile", "email"],
     // iosClientId: 'YOUR_IOS_CLIENT_ID',
     // androidClientId: 'YOUR_ANDROID_CLIENT_ID',
   });
@@ -46,11 +51,44 @@ export default function LoginScreen({ navigation }) {
     if (response?.type === "success") {
       const { id_token } = response.params;
       const credential = GoogleAuthProvider.credential(id_token);
-      handleGoogleSignIn(credential);
+      handleGoogleSignInCredential(credential);
     }
   }, [response]);
 
-  const handleGoogleSignIn = async (credential) => {
+  const handleGoogleSignIn = async () => {
+    try {
+      const redirectUrl = AuthSession.makeRedirectUri({ useProxy: true });
+      const authUrl =
+        `https://accounts.google.com/o/oauth2/v2/auth?` +
+        `client_id=${encodeURIComponent(
+          "1065295977532-ii2kqqe52rp28pfcpluraqhkdan30131.apps.googleusercontent.com"
+        )}` +
+        `&redirect_uri=${encodeURIComponent(redirectUrl)}` +
+        `&response_type=token` +
+        `&scope=${encodeURIComponent("profile email")}`;
+
+      const result = await WebBrowser.openAuthSessionAsync(
+        authUrl,
+        redirectUrl
+      );
+
+      if (result.type === "success") {
+        // Parse the access token from the URL
+        const accessToken = result.url
+          .split("#")[1]
+          .split("&")[0]
+          .split("=")[1];
+        console.log("Got access token:", accessToken);
+
+        // Use the token to get user info or sign in to Firebase
+        // ...
+      }
+    } catch (error) {
+      console.error("Auth error:", error);
+    }
+  };
+
+  const handleGoogleSignInCredential = async (credential) => {
     setLoading(true);
     try {
       const userCredential = await signInWithCredential(auth, credential);

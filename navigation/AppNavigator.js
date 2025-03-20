@@ -12,6 +12,7 @@ import HomeScreen from "../screens/HomeScreen";
 import PaymentScreen from "../screens/PaymentScreen";
 import HistoryScreen from "../screens/HistoryScreen";
 import ProfileScreen from "../screens/ProfileScreen";
+import PaymentDetailsScreen from "../screens/PaymentDetailsScreen";
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -35,9 +36,21 @@ function MainTabs() {
         },
       })}
     >
-      <Tab.Screen name="Home" component={HomeScreen} />
-      <Tab.Screen name="History" component={HistoryScreen} />
-      <Tab.Screen name="Profile" component={ProfileScreen} />
+      <Tab.Screen
+        name="Home"
+        component={HomeScreen}
+        options={{ headerShown: false }}
+      />
+      <Tab.Screen
+        name="History"
+        component={HistoryScreen}
+        options={{ headerShown: false }}
+      />
+      <Tab.Screen
+        name="Profile"
+        component={ProfileScreen}
+        options={{ headerShown: false }}
+      />
     </Tab.Navigator>
   );
 }
@@ -69,6 +82,11 @@ export default function AppNavigator() {
         ) : (
           // App screens
           <>
+            <Stack.Screen
+              name="PaymentDetails"
+              component={PaymentDetailsScreen}
+              options={{ headerShown: false }}
+            />
             <Stack.Screen
               name="Main"
               component={MainTabs}
